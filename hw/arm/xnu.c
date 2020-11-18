@@ -126,8 +126,8 @@ static void macho_dtb_node_process(DTBNode *node)
 
 void macho_load_dtb(char *filename, AddressSpace *as, MemoryRegion *mem,
                     const char *name, hwaddr dtb_pa, uint64_t *size,
-                    hwaddr ramdisk_addr, hwaddr ramdisk_size, hwaddr tc_addr,
-                    hwaddr tc_size, hwaddr *uart_mmio_pa)
+                    hwaddr ramdisk_addr, hwaddr ramdisk_size,
+                    hwaddr *uart_mmio_pa)
 {
     uint8_t *file_data = NULL;
     unsigned long fsize;
@@ -211,6 +211,24 @@ void macho_load_dtb(char *filename, AddressSpace *as, MemoryRegion *mem,
         remove_dtb_prop(child, prop);
         add_dtb_prop(child, "random-seed", sizeof(seed), (uint8_t *)&seed[0]);
 
+        //update the display parameters
+        uint32_t display_rotation = 0;
+        prop = get_dtb_prop(child, "display-rotation");
+        if (NULL == prop) {
+            abort();
+        }
+        remove_dtb_prop(child, prop);
+        add_dtb_prop(child, "display-rotation", sizeof(display_rotation),
+                     (uint8_t *)&display_rotation);
+        uint32_t display_scale = 1;
+        prop = get_dtb_prop(child, "display-scale");
+        if (NULL == prop) {
+            abort();
+        }
+        remove_dtb_prop(child, prop);
+        add_dtb_prop(child, "display-scale", sizeof(display_scale),
+                     (uint8_t *)&display_scale);
+
         //these are needed by the image4 parser module$
         uint32_t data = 0;
         add_dtb_prop(child, "security-domain", sizeof(data), (uint8_t *)&data);
@@ -232,11 +250,6 @@ void macho_load_dtb(char *filename, AddressSpace *as, MemoryRegion *mem,
                          (uint8_t *)&memmap[0]);
         }
 
-        memmap[0] = tc_addr;
-        memmap[1] = tc_size;
-        add_dtb_prop(child, "TrustCache", sizeof(memmap),
-                     (uint8_t *)&memmap[0]);
-
         macho_dtb_node_process(root);
 
         uint64_t size_n = get_dtb_node_buffer_size(root);
@@ -254,7 +267,38 @@ void macho_load_dtb(char *filename, AddressSpace *as, MemoryRegion *mem,
     }
 }
 
-void macho_load_raw_file(char *filename, AddressSpace *as, MemoryRegion *mem,
+void macho_map_raw_file(const char *filename, AddressSpace *as, MemoryRegion *mem,
+                        const char *name, hwaddr file_pa, uint64_t *size)
+{
+    Error *err = NULL;
+    MemoryRegion *mr = NULL;
+    struct stat file_info;
+
+    if (stat(filename, &file_info)) {
+        fprintf(stderr, "Couldn't get file size for mmapping. Loading into RAM.\n");
+        goto load_fallback;
+    }
+
+    mr = g_new(MemoryRegion, 1);
+    *size = file_info.st_size;
+
+    memory_region_init_ram_from_file(mr, NULL, name, *size & (~0xffffUL), 0, 0, filename, &err);
+    if (err) {
+        error_report_err(err);
+        fprintf(stderr, "Couldn't mmap file. Loading into RAM.\n");
+        goto load_fallback;
+    }
+    memory_region_add_subregion(mem, file_pa, mr);
+    return;
+
+load_fallback:
+    if (mr) {
+        g_free(mr);
+    }
+    macho_load_raw_file(filename, as, mem, name, file_pa, size);
+}
+
+void macho_load_raw_file(const char *filename, AddressSpace *as, MemoryRegion *mem,
                          const char *name, hwaddr file_pa, uint64_t *size)
 {
     uint8_t* file_data = NULL;

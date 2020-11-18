@@ -34,6 +34,10 @@
 #include "cpu.h"
 #include "sysemu/kvm.h"
 
+#define MAX_CUSTOM_HOOKS (30)
+
+#define CUSTOM_HOOKS_GLOBALS_SIZE (0x400)
+
 #define TYPE_N66 "iPhone6splus-n66-s8000"
 
 #define TYPE_N66_MACHINE   MACHINE_TYPE_NAME(TYPE_N66)
@@ -50,27 +54,26 @@ typedef struct {
 
 typedef struct {
     MachineState parent;
+    uint64_t hook_funcs_count;
     hwaddr extra_data_pa;
     hwaddr kpc_pa;
     hwaddr kbootargs_pa;
     hwaddr uart_mmio_pa;
     ARMCPU *cpu;
-    KernelTaskPortParams ktpp;
-    PtrNtfDev ptr_ntf;
+    KernelTrHookParams hook;
+    KernelTrHookParams hook_funcs[MAX_CUSTOM_HOOKS];
     struct arm_boot_info bootinfo;
     char ramdisk_filename[1024];
     char kernel_filename[1024];
-    char secmon_filename[1024];
     char dtb_filename[1024];
-    char tc_filename[1024];
+    char hook_funcs_cfg[1024 * 1024];
     char driver_filename[1024];
     char qc_file_0_filename[1024];
     char qc_file_1_filename[1024];
+    char qc_file_log_filename[1024];
     char kern_args[1024];
     uint16_t tunnel_port;
-    FileMmioDev raw_kernel_file_dev;
     FileMmioDev ramdisk_file_dev;
-    FileMmioDev tc_file_dev;
     bool use_ramfb;
     N66_CPREG_VAR_DEF(ARM64_REG_HID11);
     N66_CPREG_VAR_DEF(ARM64_REG_HID3);
@@ -83,13 +86,14 @@ typedef struct {
     N66_CPREG_VAR_DEF(PMC1);
     N66_CPREG_VAR_DEF(PMCR1);
     N66_CPREG_VAR_DEF(PMSR);
+    N66_CPREG_VAR_DEF(L2ACTLR_EL1);
 } N66MachineState;
 
 typedef struct {
-    uint8_t fake_port[FAKE_PORT_ALLOC_SIZE];
-    uint8_t kernel_task[KERNEL_TASK_ALLOC_SIZE];
     uint8_t hook_code[HOOK_CODE_ALLOC_SIZE];
+    uint8_t hook_funcs_code[MAX_CUSTOM_HOOKS][HOOK_CODE_ALLOC_SIZE];
     uint8_t ramfb[RAMFB_SIZE];
+    uint8_t hook_globals[CUSTOM_HOOKS_GLOBALS_SIZE];
 } __attribute__((packed)) AllocatedData;
 
 #endif

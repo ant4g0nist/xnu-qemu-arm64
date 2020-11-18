@@ -125,7 +125,7 @@ hwaddr pt_tte_el1(ARMCPU *cpu, AddressSpace *as, hwaddr va, bool make_exe)
         tsz = tcr_t1sz;
     } else {
         uint64_t zero_bits = extract64(va, 64 - tcr_t0sz, tcr_t0sz);
-        //fprintf(stderr, "91 pt_tte_el1: te: 0x%016llx\n", te);
+        //fprintf(stderr, "91 pt_tte_el1: te: 0x%016lx\n", te);
         if (0 != zero_bits) {
             fprintf(stderr, "10 pt_tte_el1: te: 0x%016llx\n", te);
             abort();
@@ -217,7 +217,7 @@ hwaddr pt_tte_el1(ARMCPU *cpu, AddressSpace *as, hwaddr va, bool make_exe)
     //fprintf(stderr, "pt_tte_el1: te: 0x%016llx\n", te);
 
     uint64_t page_offset = extract64(va, 0, TG_16K_SIZE);
-    return te & TE_PHYS_ADDR_MASK + page_offset;
+    return (te & TE_PHYS_ADDR_MASK) + page_offset;
 }
 
 void va_make_exec(ARMCPU *cpu, AddressSpace *as, hwaddr va, hwaddr size)

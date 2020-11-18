@@ -26,15 +26,13 @@
 
 #include "qemu-common.h"
 #include "hw/arm/boot.h"
-#include "hw/arm/xnu_ptr_ntf.h"
-#include "hw/arm/xnu_remap_dev.h"
 #include "hw/arm/xnu_mem.h"
-#include "hw/arm/xnu_fake_task_port.h"
-#include "hw/arm/xnu_file_mmio_dev.h"
+#include "hw/arm/xnu_trampoline_hook.h"
 #include "hw/arm/xnu_dtb.h"
 #include "hw/arm/xnu_cpacr.h"
 #include "hw/arm/xnu_pagetable.h"
 #include "hw/arm/xnu_trampoline_hook.h"
+#include "hw/arm/xnu_file_mmio_dev.h"
 #include "hw/arm/xnu_fb_cfg.h"
 
 // pexpert/pexpert/arm64/boot.h
@@ -134,11 +132,14 @@ void arm_load_macho(char *filename, AddressSpace *as, MemoryRegion *mem,
                     const char *name, hwaddr phys_base, hwaddr virt_base,
                     hwaddr low_virt_addr, hwaddr high_virt_addr, hwaddr *pc);
 
-void macho_load_raw_file(char *filename, AddressSpace *as, MemoryRegion *mem,
+void macho_map_raw_file(const char *filename, AddressSpace *as, MemoryRegion *mem,
+                         const char *name, hwaddr file_pa, uint64_t *size);
+
+void macho_load_raw_file(const char *filename, AddressSpace *as, MemoryRegion *mem,
                          const char *name, hwaddr file_pa, uint64_t *size);
 
 void macho_load_dtb(char *filename, AddressSpace *as, MemoryRegion *mem,
                     const char *name, hwaddr dtb_pa, uint64_t *size,
-                    hwaddr ramdisk_addr, hwaddr ramdisk_size, hwaddr tc_addr,
-                    hwaddr tc_size, hwaddr *uart_mmio_pa);
+                    hwaddr ramdisk_addr, hwaddr ramdisk_size,
+                    hwaddr *uart_mmio_pa);
 #endif
